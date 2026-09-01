@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // SQLite for local dev. Point DATABASE_URL at Postgres (e.g. Supabase/Vercel
+  // Postgres/Neon) in production — see README "Going to production".
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enum support in Prisma, so enum-like fields below are
+// plain strings. The allowed values are validated in app code — see
+// src/lib/constants.ts (PLAN_STATUSES, ROLES, CERT_TYPES, REMINDER_WINDOWS).
+
+model Company {
+  id             String     @id @default(cuid())
+  name           String
+  // Used to build the public compliance-card URL: /c/[shareSlug]
+  shareSlug      String     @unique
+  planStatus     String     @default("TRIAL")
+  trialEndsAt    DateTime
+  stripeCustomerId       String? @unique
+  stripeSubscriptionId   String? @unique
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  users        User[]
+  workers      Worker[]
+  certificates Certificate[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("OWNER")
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Worker {
+  id        String   @id @default(cuid())
+  name      String
+  jobTitle  String?
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  certificates Certificate[]
+
+  @@index([companyId])
+}
+
+model Certificate {
+  id           String    @id @default(cuid())
+  type         String
+  label        String
+  issuedDate   DateTime?
+  expiryDate   DateTime
+  // Relative path within the private storage root (see src/lib/storage.ts) —
+  // not a public URL. Documents are served through the authenticated
+  // /api/documents/[certId] route, never directly.
+  documentPath String?
+  documentName String?
+  notes        String?
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  workerId String?
+  worker   Worker? @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  reminders ReminderLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([workerId])
+  @@index([expiryDate])
+}
+
+model ReminderLog {
+  id            String      @id @default(cuid())
+  certificateId String
+  certificate   Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  window        String
+  sentAt        DateTime    @default(now())
+
+  // Prevents the same cert from getting the same reminder window twice.
+  @@unique([certificateId, window])
+}
