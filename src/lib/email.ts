@@ -30,6 +30,16 @@ export async function sendEmail({ to, subject, html, text }: SendEmailArgs): Pro
   }
 }
 
+/** workerName, certLabel and companyName are all user-entered free text — escape before interpolating into HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function reminderEmail(args: {
   companyName: string;
   workerName: string | null;
@@ -40,6 +50,10 @@ export function reminderEmail(args: {
 }): { subject: string; html: string; text: string } {
   const { companyName, workerName, certLabel, daysRemaining, expiryDate, dashboardUrl } = args;
   const who = workerName ? `${workerName}'s ${certLabel}` : certLabel;
+  const whoHtml = workerName
+    ? `${escapeHtml(workerName)}&rsquo;s ${escapeHtml(certLabel)}`
+    : escapeHtml(certLabel);
+  const companyNameHtml = escapeHtml(companyName);
   const when = daysRemaining <= 0 ? "has expired" : `expires in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}`;
   const dateStr = expiryDate.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -55,9 +69,9 @@ export function reminderEmail(args: {
   const text = `${who} ${when} (${dateStr}).\n\nUpdate it before it lapses a job: ${dashboardUrl}`;
   const html = `
     <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-      <h2 style="margin: 0 0 12px;">${who} ${when}</h2>
+      <h2 style="margin: 0 0 12px;">${whoHtml} ${when}</h2>
       <p style="color:#374151; line-height:1.5;">Expiry date: <strong>${dateStr}</strong></p>
-      <p style="color:#374151; line-height:1.5;">A lapsed certificate can lose you a job on site checks — renew it and upload the new document to keep ${companyName}'s compliance card current.</p>
+      <p style="color:#374151; line-height:1.5;">A lapsed certificate can lose you a job on site checks — renew it and upload the new document to keep ${companyNameHtml}&rsquo;s compliance card current.</p>
       <p style="margin-top:20px;">
         <a href="${dashboardUrl}" style="background:#111827;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">Open dashboard</a>
       </p>

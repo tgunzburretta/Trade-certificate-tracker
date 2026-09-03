@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, createSession, destroySession } from "@/lib/auth";
 import { makeShareSlug } from "@/lib/slug";
 import { TRIAL_DAYS } from "@/lib/constants";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 const registerSchema = z.object({
   companyName: z.string().trim().min(2, "Company name is too short"),
@@ -70,9 +74,14 @@ export async function loginAction(formData: FormData): Promise<void> {
   });
 
   const genericError = `/login?error=${encodeURIComponent("Incorrect email or password")}`;
+  const rateLimitedError = `/login?error=${encodeURIComponent("Too many attempts. Try again in a few minutes.")}`;
   if (!parsed.success) redirect(genericError);
 
   const { email, password } = parsed.data;
+  if (!checkRateLimit(`login:${email}`, LOGIN_LIMIT, LOGIN_WINDOW_MS)) {
+    redirect(rateLimitedError);
+  }
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) redirect(genericError);
 

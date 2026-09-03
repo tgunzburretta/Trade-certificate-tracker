@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth";
 import { createContractorSession, destroyContractorSession } from "@/lib/contractorAuth";
 import { TRIAL_DAYS } from "@/lib/constants";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 const registerSchema = z.object({
   businessName: z.string().trim().min(2, "Business name is too short"),
@@ -58,9 +62,14 @@ export async function loginContractorAction(formData: FormData): Promise<void> {
   });
 
   const genericError = `/contractor/login?error=${encodeURIComponent("Incorrect email or password")}`;
+  const rateLimitedError = `/contractor/login?error=${encodeURIComponent("Too many attempts. Try again in a few minutes.")}`;
   if (!parsed.success) redirect(genericError);
 
   const { email, password } = parsed.data;
+  if (!checkRateLimit(`login:${email}`, LOGIN_LIMIT, LOGIN_WINDOW_MS)) {
+    redirect(rateLimitedError);
+  }
+
   const contractor = await prisma.contractor.findUnique({ where: { email } });
   if (!contractor) redirect(genericError);
 

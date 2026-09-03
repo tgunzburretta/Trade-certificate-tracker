@@ -26,10 +26,15 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // documentName is the original filename the browser sent on upload — user
+  // input. Strip quotes and control characters (CR/LF included) before it
+  // goes into a header value.
+  const safeName = (cert.documentName || "document").replace(/["\x00-\x1f]/g, "");
+
   return new NextResponse(new Uint8Array(bytes), {
     headers: {
       "Content-Type": contentTypeFor(ext),
-      "Content-Disposition": `inline; filename="${(cert.documentName || "document").replace(/"/g, "")}"`,
+      "Content-Disposition": `inline; filename="${safeName}"`,
       "Cache-Control": "private, no-store",
     },
   });

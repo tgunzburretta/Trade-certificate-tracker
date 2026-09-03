@@ -39,6 +39,26 @@ export async function startCheckoutAction(formData: FormData): Promise<void> {
   }
 
   const stripe = getStripe();
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: user.companyId } });
+
+  // Already on a paid subscription and switching tier — update the existing
+  // Stripe subscription's price in place. Starting a *second* Checkout
+  // session here would create a second, separate subscription and double-
+  // bill the company instead of changing their plan.
+  if (company.planStatus === "ACTIVE" && company.stripeSubscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+    const itemId = subscription.items.data[0]?.id;
+    if (itemId) {
+      await stripe.subscriptions.update(company.stripeSubscriptionId, {
+        items: [{ id: itemId, price: stripePriceIdForTier(tier) }],
+        proration_behavior: "create_prorations",
+      });
+      await prisma.company.update({ where: { id: user.companyId }, data: { planTier: tier } });
+      revalidatePath("/billing");
+      redirect("/billing?success=1");
+    }
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer_email: user.email,
