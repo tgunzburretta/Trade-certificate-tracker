@@ -40,6 +40,9 @@ model User {
   name            String
   role            String    @default("OWNER")
   emailVerifiedAt DateTime?
+  // One of REFERRAL_SOURCES in src/lib/constants.ts — how the registrant
+  // said they heard about Vetted. Optional, captured at signup only.
+  referralSource  String?
   companyId       String
   company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt       DateTime  @default(now())
@@ -98,6 +101,8 @@ model Contractor {
   passwordHash    String
   planStatus      String    @default("TRIAL")
   emailVerifiedAt DateTime?
+  // One of REFERRAL_SOURCES in src/lib/constants.ts.
+  referralSource  String?
   trialEndsAt     DateTime
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique

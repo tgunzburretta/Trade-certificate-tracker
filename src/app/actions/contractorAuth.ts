@@ -9,7 +9,7 @@ import {
   destroyContractorSession,
   getCurrentContractor,
 } from "@/lib/contractorAuth";
-import { TRIAL_DAYS } from "@/lib/constants";
+import { TRIAL_DAYS, REFERRAL_SOURCES } from "@/lib/constants";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createToken, consumeToken } from "@/lib/tokens";
 import { sendEmail, verificationEmail, passwordResetEmail } from "@/lib/email";
@@ -38,10 +38,13 @@ async function sendContractorVerificationEmail(
   await sendEmail({ to: email, subject, html, text });
 }
 
+const referralSourceValues = REFERRAL_SOURCES.map((r) => r.value) as [string, ...string[]];
+
 const registerSchema = z.object({
   businessName: z.string().trim().min(2, "Business name is too short"),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  referralSource: z.enum(referralSourceValues).optional(),
 });
 
 export async function registerContractorAction(formData: FormData): Promise<void> {
@@ -49,13 +52,14 @@ export async function registerContractorAction(formData: FormData): Promise<void
     businessName: formData.get("businessName"),
     email: formData.get("email"),
     password: formData.get("password"),
+    referralSource: formData.get("referralSource") || undefined,
   });
 
   if (!parsed.success) {
     redirect(`/contractor/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const { businessName, email, password } = parsed.data;
+  const { businessName, email, password, referralSource } = parsed.data;
 
   const existing = await prisma.contractor.findUnique({ where: { email } });
   if (existing) {
@@ -70,7 +74,7 @@ export async function registerContractorAction(formData: FormData): Promise<void
   const passwordHash = await hashPassword(password);
 
   const contractor = await prisma.contractor.create({
-    data: { businessName, email, passwordHash, trialEndsAt },
+    data: { businessName, email, passwordHash, trialEndsAt, referralSource },
   });
 
   await sendContractorVerificationEmail(contractor.id, contractor.businessName, contractor.email);

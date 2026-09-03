@@ -6,6 +6,19 @@ export type PlanStatus = (typeof PLAN_STATUSES)[number];
 export const ROLES = ["OWNER", "MEMBER"] as const;
 export type Role = (typeof ROLES)[number];
 
+// Shown as an optional "How did you hear about us?" field at signup, so
+// outreach channels (see the customer-outreach checklist) can be measured
+// rather than guessed at.
+export const REFERRAL_SOURCES = [
+  { value: "WORD_OF_MOUTH", label: "Word of mouth / a mate recommended it" },
+  { value: "FACEBOOK_WHATSAPP", label: "Facebook or WhatsApp trade group" },
+  { value: "DIRECTORY", label: "Checkatrade, MyBuilder or a similar directory" },
+  { value: "TRADE_BODY", label: "A trade body or association" },
+  { value: "SEARCH", label: "Google / search engine" },
+  { value: "OTHER", label: "Other" },
+] as const;
+export type ReferralSource = (typeof REFERRAL_SOURCES)[number]["value"];
+
 export const CERT_TYPES = [
   { value: "PUBLIC_LIABILITY", label: "Public liability insurance" },
   { value: "CSCS_CARD", label: "CSCS card" },

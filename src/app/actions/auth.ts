@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, createSession, destroySession, getCurrentUser } from "@/lib/auth";
 import { makeShareSlug } from "@/lib/slug";
-import { TRIAL_DAYS } from "@/lib/constants";
+import { TRIAL_DAYS, REFERRAL_SOURCES } from "@/lib/constants";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createToken, consumeToken } from "@/lib/tokens";
 import { sendEmail, verificationEmail, passwordResetEmail } from "@/lib/email";
@@ -29,11 +29,14 @@ async function sendVerificationEmail(userId: string, name: string, email: string
   await sendEmail({ to: email, subject, html, text });
 }
 
+const referralSourceValues = REFERRAL_SOURCES.map((r) => r.value) as [string, ...string[]];
+
 const registerSchema = z.object({
   companyName: z.string().trim().min(2, "Company name is too short"),
   name: z.string().trim().min(2, "Your name is too short"),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  referralSource: z.enum(referralSourceValues).optional(),
 });
 
 export async function registerAction(formData: FormData): Promise<void> {
@@ -42,13 +45,14 @@ export async function registerAction(formData: FormData): Promise<void> {
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    referralSource: formData.get("referralSource") || undefined,
   });
 
   if (!parsed.success) {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const { companyName, name, email, password } = parsed.data;
+  const { companyName, name, email, password, referralSource } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -66,6 +70,7 @@ export async function registerAction(formData: FormData): Promise<void> {
       email,
       passwordHash,
       role: "OWNER",
+      referralSource,
       company: {
         create: {
           name: companyName,
