@@ -106,10 +106,11 @@ Vercel Blob, or similar — the two functions (`saveUploadedDocument`,
 3. Set a real `AUTH_SECRET` and `CRON_SECRET`.
 4. Add `RESEND_API_KEY` + a verified sending domain for real reminder
    emails.
-5. Add `STRIPE_SECRET_KEY` / `STRIPE_PRICE_ID` / `STRIPE_WEBHOOK_SECRET`
-   for real billing, and point a Stripe webhook at
-   `/api/stripe/webhook` (events: `checkout.session.completed`,
-   `customer.subscription.updated`, `customer.subscription.deleted`).
+5. Add `STRIPE_SECRET_KEY`, one `STRIPE_PRICE_ID_*` per plan (`SOLO`, `CREW`,
+   `BUSINESS`, `CONTRACTOR`), and `STRIPE_WEBHOOK_SECRET` for real billing,
+   and point a Stripe webhook at `/api/stripe/webhook` (events:
+   `checkout.session.completed`, `customer.subscription.updated`,
+   `customer.subscription.deleted`).
 6. Swap document storage for S3/Vercel Blob (see above) if deploying
    serverless.
 7. Add the `APP_URL` and `CRON_SECRET` GitHub repo secrets so the daily
@@ -117,13 +118,17 @@ Vercel Blob, or similar — the two functions (`saveUploadedDocument`,
 
 ## Go-to-market notes
 
-- **Price:** £8/month per company, unlimited workers and certificates.
+- **Price:** trade companies pick Solo (£7/mo, 1 worker), Crew (£15/mo, up
+  to 6 workers) or Business (£29/mo, unlimited) — see `PLAN_TIERS` in
+  `src/lib/constants.ts`. Contractors pay £19/mo flat for unlimited
+  subcontractors on their watchlist.
 - **First 10 customers:** post in the roofing and building trade Facebook
   groups, plus a direct offer to two local firms — set it up free in
   exchange for a testimonial and a referral to three of their mates. The
   Billing page's demo/manual mode (no Stripe keys needed) is built for
   exactly this: activate their plan without ever asking for a card.
-- **Growth loop:** the compliance card is the product's own distribution —
-  every time a tradesperson sends their card link to a customer or main
-  contractor, that's a new person seeing CertTrack who might run their own
-  crew.
+- **Growth loop, two-sided:** every compliance-card link a tradesperson
+  sends a customer or main contractor is a new person seeing CertTrack who
+  might run their own crew — and every contractor who signs up to watch
+  their subs is pushing those subs' companies to get (or keep) a CertTrack
+  account so their card stays current.
