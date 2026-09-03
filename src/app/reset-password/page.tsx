@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { resetPasswordAction } from "@/app/actions/auth";
 import { Card, Field, SubmitButton, ErrorBanner } from "@/components/ui";
 
@@ -13,8 +14,8 @@ export default async function ResetPasswordPage({
     <div className="flex flex-1 items-center justify-center bg-slate-50 px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <Link href="/" className="text-xl font-semibold tracking-tight text-slate-900">
-            CertTrack
+          <Link href="/">
+            <Logo size={26} wordmarkClassName="text-xl font-semibold tracking-tight text-slate-900" />
           </Link>
         </div>
         <Card className="p-6">

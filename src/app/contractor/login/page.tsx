@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { loginContractorAction } from "@/app/actions/contractorAuth";
 import { Card, Field, SubmitButton, ErrorBanner } from "@/components/ui";
 
@@ -13,8 +14,8 @@ export default async function ContractorLoginPage({
     <div className="flex flex-1 items-center justify-center bg-slate-50 px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <Link href="/for-contractors" className="text-xl font-semibold tracking-tight text-slate-900">
-            CertTrack <span className="text-slate-400">for contractors</span>
+          <Link href="/for-contractors">
+            <Logo size={26} wordmarkClassName="text-xl font-semibold tracking-tight text-slate-900" suffix="for contractors" />
           </Link>
         </div>
         <Card className="p-6">

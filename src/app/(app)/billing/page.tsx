@@ -48,7 +48,7 @@ export default async function BillingPage({
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">CertTrack — {user.company.name}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Vetted — {user.company.name}</h2>
             <p className="text-sm text-slate-500">
               {currentTier.name} plan · £{currentTier.priceGBP}/month ·{" "}
               {workerCount}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { logoutContractorAction } from "@/app/actions/contractorAuth";
+import { Logo } from "@/components/Logo";
 
 const LINKS = [
   { href: "/contractor/dashboard", label: "Dashboard" },
@@ -11,11 +12,8 @@ export function ContractorNavBar({ businessName }: { businessName: string }) {
     <header className="border-b border-slate-200 bg-white">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6">
         <div className="flex items-center gap-6">
-          <Link
-            href="/contractor/dashboard"
-            className="text-lg font-semibold tracking-tight text-slate-900"
-          >
-            CertTrack <span className="text-slate-400">for contractors</span>
+          <Link href="/contractor/dashboard">
+            <Logo suffix="for contractors" />
           </Link>
           <nav className="hidden gap-4 sm:flex">
             {LINKS.map((link) => (

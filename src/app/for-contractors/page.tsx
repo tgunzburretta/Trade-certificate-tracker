@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CONTRACTOR_PLAN_PRICE_GBP, TRIAL_DAYS } from "@/lib/constants";
+import { Logo } from "@/components/Logo";
 
 const FEATURES = [
   {
@@ -8,7 +9,7 @@ const FEATURES = [
   },
   {
     title: "Always current",
-    body: "Status is pulled live from each subcontractor's own CertTrack account — no chasing them for a PDF before every job.",
+    body: "Status is pulled live from each subcontractor's own Vetted account — no chasing them for a PDF before every job.",
   },
   {
     title: "Nothing sensitive, just status",
@@ -21,8 +22,8 @@ export default function ForContractorsPage() {
     <div className="flex flex-1 flex-col bg-white">
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="text-lg font-semibold tracking-tight text-slate-900">
-            CertTrack
+          <Link href="/">
+            <Logo />
           </Link>
           <div className="flex items-center gap-3">
             <Link href="/contractor/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -44,7 +45,7 @@ export default function ForContractorsPage() {
             Know your subcontractors are covered — before the job starts.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-slate-600">
-            Main contractors use CertTrack to keep a live dashboard of every subcontractor&rsquo;s
+            Main contractors use Vetted to keep a live dashboard of every subcontractor&rsquo;s
             insurance, CSCS cards and safety certs, instead of chasing paperwork by email.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -88,14 +89,14 @@ export default function ForContractorsPage() {
           <p className="text-sm text-slate-500">
             Running a small trade business instead?{" "}
             <Link href="/" className="font-medium text-slate-900 underline">
-              See CertTrack for trades
+              See Vetted for trades
             </Link>
           </p>
         </section>
       </main>
 
       <footer className="border-t border-slate-100 py-8 text-center text-xs text-slate-400">
-        CertTrack — certificate renewal tracking for trades.
+        Vetted — certificate renewal tracking for trades.
       </footer>
     </div>
   );

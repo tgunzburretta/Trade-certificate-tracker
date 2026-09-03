@@ -42,7 +42,7 @@ export default async function ContractorBillingPage({
       <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">CertTrack for contractors — {contractor.businessName}</h2>
+            <h2 className="text-lg font-semibold text-slate-900">Vetted for contractors — {contractor.businessName}</h2>
             <p className="text-sm text-slate-500">
               £{CONTRACTOR_PLAN_PRICE_GBP}/month · unlimited subcontractors tracked
             </p>
@@ -58,7 +58,7 @@ export default async function ContractorBillingPage({
 
         <ul className="mt-4 space-y-1 text-sm text-slate-600">
           <li>✓ Unlimited subcontractors on your watchlist</li>
-          <li>✓ Live compliance status, pulled straight from each sub&rsquo;s CertTrack account</li>
+          <li>✓ Live compliance status, pulled straight from each sub&rsquo;s Vetted account</li>
           <li>✓ One dashboard instead of chasing paperwork before a job starts</li>
         </ul>
 

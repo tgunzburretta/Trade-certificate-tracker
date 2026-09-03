@@ -139,7 +139,7 @@ const forgotPasswordSchema = z.object({
 /**
  * Always redirects to the same "check your email" page whether or not the
  * address is registered — revealing that would let anyone enumerate which
- * emails have CertTrack accounts.
+ * emails have Vetted accounts.
  */
 export async function requestPasswordResetAction(formData: FormData): Promise<void> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });

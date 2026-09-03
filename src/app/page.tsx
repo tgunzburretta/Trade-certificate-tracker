@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PLAN_TIERS, CONTRACTOR_PLAN_PRICE_GBP, TRIAL_DAYS } from "@/lib/constants";
+import { Logo } from "@/components/Logo";
 
 const FROM_PRICE = Math.min(...PLAN_TIERS.map((t) => t.priceGBP));
 
@@ -39,7 +40,7 @@ export default function Home() {
     <div className="flex flex-1 flex-col bg-white">
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
-          <span className="text-lg font-semibold tracking-tight text-slate-900">CertTrack</span>
+          <Logo />
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Sign in
@@ -135,7 +136,7 @@ export default function Home() {
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
             <h2 className="text-2xl font-semibold text-slate-900">Hiring subcontractors?</h2>
             <p className="mt-2 text-slate-600">
-              Main contractors use CertTrack to keep a live dashboard of every subcontractor&rsquo;s
+              Main contractors use Vetted to keep a live dashboard of every subcontractor&rsquo;s
               compliance status — no more chasing paperwork before a job starts.
             </p>
             <Link
@@ -149,7 +150,7 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-slate-100 py-8 text-center text-xs text-slate-400">
-        CertTrack — certificate renewal tracking for trades.
+        Vetted — certificate renewal tracking for trades.
       </footer>
     </div>
   );

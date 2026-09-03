@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/Logo";
 import { registerAction } from "@/app/actions/auth";
 import { Card, Field, SubmitButton, ErrorBanner } from "@/components/ui";
 import { TRIAL_DAYS } from "@/lib/constants";
@@ -14,8 +15,8 @@ export default async function RegisterPage({
     <div className="flex flex-1 items-center justify-center bg-slate-50 px-4 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <Link href="/" className="text-xl font-semibold tracking-tight text-slate-900">
-            CertTrack
+          <Link href="/">
+            <Logo size={26} wordmarkClassName="text-xl font-semibold tracking-tight text-slate-900" />
           </Link>
           <p className="mt-1 text-sm text-slate-500">{TRIAL_DAYS}-day free trial, no card needed.</p>
         </div>

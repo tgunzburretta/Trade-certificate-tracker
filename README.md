@@ -1,9 +1,9 @@
-# CertTrack
+# Vetted
 
 Certificate and renewal tracker for trades — roofers, sparkies, plumbers and
 scaffolders running 1–6 person outfits. Public liability, CSCS cards, van
 MOTs, ladder inspections and DBS checks all expire on different dates; a
-lapsed cert can lose a job. CertTrack keeps every expiry in one place and
+lapsed cert can lose a job. Vetted keeps every expiry in one place and
 emails whoever's in charge at 60/30/7 days before anything lapses.
 
 ## Screens
@@ -145,7 +145,7 @@ Vercel Blob, or similar — the two functions (`saveUploadedDocument`,
   Billing page's demo/manual mode (no Stripe keys needed) is built for
   exactly this: activate their plan without ever asking for a card.
 - **Growth loop, two-sided:** every compliance-card link a tradesperson
-  sends a customer or main contractor is a new person seeing CertTrack who
+  sends a customer or main contractor is a new person seeing Vetted who
   might run their own crew — and every contractor who signs up to watch
-  their subs is pushing those subs' companies to get (or keep) a CertTrack
+  their subs is pushing those subs' companies to get (or keep) a Vetted
   account so their card stays current.

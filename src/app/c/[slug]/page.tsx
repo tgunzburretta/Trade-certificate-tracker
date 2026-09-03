@@ -75,7 +75,7 @@ export default async function ComplianceCardPage({
         )}
 
         <p className="pt-4 text-center text-xs text-slate-400">
-          Certificate status is kept current by {company.name} via CertTrack. Document contents
+          Certificate status is kept current by {company.name} via Vetted. Document contents
           are not shown publicly — ask {company.name} directly to verify specific paperwork.
         </p>
       </div>

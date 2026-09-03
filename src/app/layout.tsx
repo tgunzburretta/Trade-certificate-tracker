@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CertTrack — certificate renewal tracker for trades",
+  title: "Vetted — certificate renewal tracker for trades",
   description:
     "Track public liability, CSCS cards, van MOTs, ladder inspections and DBS checks in one place. Get alerted at 60/30/7 days before they lapse.",
 };
