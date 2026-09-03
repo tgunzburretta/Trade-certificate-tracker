@@ -26,6 +26,8 @@ export default async function ComplianceCardPage({
   });
   if (!company) notFound();
 
+  await prisma.cardView.create({ data: { companyId: company.id } });
+
   const allCerts = [
     ...company.certificates,
     ...company.workers.flatMap((w) => w.certificates),

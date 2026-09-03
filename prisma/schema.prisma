@@ -31,6 +31,20 @@ model Company {
   users        User[]
   workers      Worker[]
   certificates Certificate[]
+  cardViews    CardView[]
+}
+
+// One page load of a company's public compliance card — a raw pageview
+// count, not deduped by visitor. Surfaced back to the company as "X views
+// this month" so the free, no-login compliance card visibly earns its
+// keep as part of the paid plan, instead of being invisible to them.
+model CardView {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now())
+
+  @@index([companyId, viewedAt])
 }
 
 model User {
