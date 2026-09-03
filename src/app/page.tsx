@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PLAN_TIERS, CONTRACTOR_PLAN_PRICE_GBP, TRIAL_DAYS } from "@/lib/constants";
+import { PLAN_TIERS, TRIAL_DAYS } from "@/lib/constants";
 import { Logo } from "@/components/Logo";
 
 const FROM_PRICE = Math.min(...PLAN_TIERS.map((t) => t.priceGBP));
@@ -44,9 +44,6 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Sign in
-            </Link>
-            <Link href="/for-contractors" className="text-sm font-medium text-slate-600 hover:text-slate-900">
-              For contractors
             </Link>
             <Link
               href="/register"
@@ -128,22 +125,6 @@ export default function Home() {
               className="inline-block rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
             >
               Get started
-            </Link>
-          </div>
-        </section>
-
-        <section className="border-t border-slate-100 bg-slate-50 py-16">
-          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <h2 className="text-2xl font-semibold text-slate-900">Hiring subcontractors?</h2>
-            <p className="mt-2 text-slate-600">
-              Main contractors use Vetted to keep a live dashboard of every subcontractor&rsquo;s
-              compliance status — no more chasing paperwork before a job starts.
-            </p>
-            <Link
-              href="/for-contractors"
-              className="mt-6 inline-block rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-            >
-              See contractor plans — from £{CONTRACTOR_PLAN_PRICE_GBP}/mo
             </Link>
           </div>
         </section>
