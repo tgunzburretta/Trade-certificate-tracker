@@ -34,14 +34,15 @@ model Company {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("OWNER")
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  name            String
+  role            String    @default("OWNER")
+  emailVerifiedAt DateTime?
+  companyId       String
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
 }
 
 model Worker {
@@ -91,12 +92,13 @@ model Certificate {
 // certificates of their own; they subscribe to watch OTHER companies'
 // public compliance cards from one dashboard. See src/lib/contractorAuth.ts.
 model Contractor {
-  id           String   @id @default(cuid())
-  businessName String
-  email        String   @unique
-  passwordHash String
-  planStatus   String   @default("TRIAL")
-  trialEndsAt  DateTime
+  id              String    @id @default(cuid())
+  businessName    String
+  email           String    @unique
+  passwordHash    String
+  planStatus      String    @default("TRIAL")
+  emailVerifiedAt DateTime?
+  trialEndsAt     DateTime
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
   createdAt    DateTime @default(now())
@@ -119,6 +121,26 @@ model WatchedSub {
 
   @@unique([contractorId, shareSlug])
   @@index([contractorId])
+}
+
+// Single-use tokens for email verification and password reset, for both
+// account types. Only a SHA-256 hash of the token is stored — the raw token
+// exists only in the emailed link, so a DB read alone can't be replayed as
+// a working link (same reasoning as password hashing). See src/lib/tokens.ts.
+model VerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  // One of: EMAIL_VERIFY_USER, EMAIL_VERIFY_CONTRACTOR,
+  // PASSWORD_RESET_USER, PASSWORD_RESET_CONTRACTOR (src/lib/tokens.ts)
+  purpose   String
+  // A User.id or Contractor.id depending on purpose — not a foreign key
+  // since it points at one of two different tables.
+  subjectId String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([subjectId])
 }
 
 model ReminderLog {

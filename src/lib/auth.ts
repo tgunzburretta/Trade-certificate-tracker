@@ -77,6 +77,7 @@ export interface CurrentUser {
   name: string;
   email: string;
   role: string;
+  emailVerifiedAt: Date | null;
   companyId: string;
   company: {
     id: string;
@@ -104,6 +105,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerifiedAt: user.emailVerifiedAt,
     companyId: user.companyId,
     company: {
       id: user.company.id,

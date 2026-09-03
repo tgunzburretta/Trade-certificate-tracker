@@ -52,6 +52,7 @@ export interface CurrentContractor {
   businessName: string;
   email: string;
   planStatus: string;
+  emailVerifiedAt: Date | null;
   trialEndsAt: Date;
 }
 
@@ -78,6 +79,7 @@ export async function getCurrentContractor(): Promise<CurrentContractor | null> 
     businessName: contractor.businessName,
     email: contractor.email,
     planStatus: contractor.planStatus,
+    emailVerifiedAt: contractor.emailVerifiedAt,
     trialEndsAt: contractor.trialEndsAt,
   };
 }

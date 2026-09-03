@@ -80,3 +80,49 @@ export function reminderEmail(args: {
 
   return { subject, html, text };
 }
+
+function emailLayout(bodyHtml: string): string {
+  return `
+    <div style="font-family: -apple-system, Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+      ${bodyHtml}
+    </div>
+  `;
+}
+
+function emailButton(url: string, label: string): string {
+  return `<p style="margin-top:20px;"><a href="${url}" style="background:#111827;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;">${label}</a></p>`;
+}
+
+export function verificationEmail(args: { name: string; verifyUrl: string }): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const nameHtml = escapeHtml(args.name);
+  const subject = "Verify your email — CertTrack";
+  const text = `Hi ${args.name},\n\nConfirm this is your email address to finish setting up CertTrack: ${args.verifyUrl}\n\nThis link expires in 24 hours. If you didn't request this, you can ignore it.`;
+  const html = emailLayout(`
+      <h2 style="margin: 0 0 12px;">Verify your email</h2>
+      <p style="color:#374151; line-height:1.5;">Hi ${nameHtml}, confirm this is your email address to finish setting up CertTrack.</p>
+      ${emailButton(args.verifyUrl, "Verify email")}
+      <p style="color:#9ca3af; font-size:12px; margin-top:20px;">This link expires in 24 hours. If you didn't request this, you can ignore it.</p>
+  `);
+  return { subject, html, text };
+}
+
+export function passwordResetEmail(args: { name: string; resetUrl: string }): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const nameHtml = escapeHtml(args.name);
+  const subject = "Reset your password — CertTrack";
+  const text = `Hi ${args.name},\n\nReset your CertTrack password: ${args.resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore it — your password won't change.`;
+  const html = emailLayout(`
+      <h2 style="margin: 0 0 12px;">Reset your password</h2>
+      <p style="color:#374151; line-height:1.5;">Hi ${nameHtml}, we got a request to reset your CertTrack password.</p>
+      ${emailButton(args.resetUrl, "Reset password")}
+      <p style="color:#9ca3af; font-size:12px; margin-top:20px;">This link expires in 1 hour. If you didn't request this, you can ignore it — your password won't change.</p>
+  `);
+  return { subject, html, text };
+}

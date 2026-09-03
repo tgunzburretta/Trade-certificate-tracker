@@ -57,11 +57,28 @@ deploying anywhere real.
 | `DATABASE_URL` | yes | `file:./dev.db` for SQLite locally, or a Postgres URL in production |
 | `AUTH_SECRET` | yes | Long random string, signs session cookies |
 | `APP_URL` | yes | Public base URL — used for reminder email links and Stripe redirects. **Must start with `https://` in production**, or session cookies won't be marked `Secure` |
-| `RESEND_API_KEY` | no | Enables real email delivery via [Resend](https://resend.com). Without it, reminder emails are logged to the console instead — handy for local dev/demos |
+| `RESEND_API_KEY` | no | Enables real email delivery via [Resend](https://resend.com) for reminders, email verification and password reset links. Without it, these are logged to the console instead — handy for local dev/demos, but verification/reset links only work if you can read that log |
 | `REMINDER_FROM_EMAIL` | no | From-address for reminder emails |
 | `CRON_SECRET` | yes (for reminders) | Shared secret the daily reminder job must send |
 | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_SOLO`, `STRIPE_PRICE_ID_CREW`, `STRIPE_PRICE_ID_BUSINESS`, `STRIPE_WEBHOOK_SECRET` | no | Enables real Stripe Checkout + billing portal for trade-company plans. Without them, the Billing page's "Subscribe" / "Cancel" buttons just flip the plan status directly in the database — which is exactly what you want for the free-for-a-testimonial first-10-customers deals |
 | `STRIPE_PRICE_ID_CONTRACTOR` | no | Same idea, for the contractor plan at `/contractor/billing` |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | no | Backs login rate limiting with [Upstash Redis](https://upstash.com) so it's shared across instances/replicas. Without them, rate limiting falls back to a per-instance in-memory counter (`src/lib/rateLimit.ts`) — fine for a single Node process, not for multiple replicas or serverless |
+
+## Account security
+
+- **Password hashing**: bcrypt, both account types.
+- **Email verification**: every new signup (trade company and contractor)
+  gets a verification email with a 24-hour single-use link
+  (`src/lib/tokens.ts`). Unverified accounts see a dismissable reminder
+  banner but aren't blocked from using the app — verification isn't a hard
+  gate, just confirms the address is real and reachable.
+- **Password reset**: `/forgot-password` (trade) and
+  `/contractor/forgot-password` (contractor) send a 1-hour single-use reset
+  link. The response is identical whether or not the email is registered,
+  so the flow can't be used to enumerate accounts.
+- **Login rate limiting**: 10 attempts per email per 15 minutes on both
+  login forms (`src/lib/rateLimit.ts`), Redis-backed when configured (see
+  env vars above).
 
 ## Renewal reminders (60 / 30 / 7 days)
 
