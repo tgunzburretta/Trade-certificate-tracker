@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import { getStripe, isStripeConfigured, isContractorStripeConfigured } from "@/lib/stripe";
 import type Stripe from "stripe";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  if (!isStripeConfigured() || !process.env.STRIPE_WEBHOOK_SECRET) {
+  if ((!isStripeConfigured() && !isContractorStripeConfigured()) || !process.env.STRIPE_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 400 });
   }
 
@@ -26,15 +26,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const companyId = session.metadata?.companyId || session.client_reference_id;
+      const customerId = typeof session.customer === "string" ? session.customer : undefined;
+      const subscriptionId =
+        typeof session.subscription === "string" ? session.subscription : undefined;
+
+      const companyId = session.metadata?.companyId;
+      const contractorId = session.metadata?.contractorId;
+
       if (companyId) {
+        const tier = session.metadata?.tier;
         await prisma.company.update({
           where: { id: companyId },
           data: {
             planStatus: "ACTIVE",
-            stripeCustomerId: typeof session.customer === "string" ? session.customer : undefined,
-            stripeSubscriptionId:
-              typeof session.subscription === "string" ? session.subscription : undefined,
+            ...(tier ? { planTier: tier } : {}),
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
+          },
+        });
+      } else if (contractorId) {
+        await prisma.contractor.update({
+          where: { id: contractorId },
+          data: {
+            planStatus: "ACTIVE",
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId,
           },
         });
       }
@@ -43,17 +59,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
+      const planStatus =
+        subscription.status === "active" || subscription.status === "trialing"
+          ? "ACTIVE"
+          : subscription.status === "past_due" || subscription.status === "unpaid"
+            ? "PAST_DUE"
+            : "CANCELED";
+
       const company = await prisma.company.findFirst({
         where: { stripeSubscriptionId: subscription.id },
       });
       if (company) {
-        const planStatus =
-          subscription.status === "active" || subscription.status === "trialing"
-            ? "ACTIVE"
-            : subscription.status === "past_due" || subscription.status === "unpaid"
-              ? "PAST_DUE"
-              : "CANCELED";
         await prisma.company.update({ where: { id: company.id }, data: { planStatus } });
+        break;
+      }
+
+      const contractor = await prisma.contractor.findFirst({
+        where: { stripeSubscriptionId: subscription.id },
+      });
+      if (contractor) {
+        await prisma.contractor.update({ where: { id: contractor.id }, data: { planStatus } });
       }
       break;
     }

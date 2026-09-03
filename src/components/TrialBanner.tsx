@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { PLAN_TIERS } from "@/lib/constants";
+
+const FROM_PRICE = Math.min(...PLAN_TIERS.map((t) => t.priceGBP));
 
 interface CompanyInfo {
   planStatus: string;
@@ -33,7 +36,7 @@ export function TrialBanner({ company, now }: { company: CompanyInfo; now: Date 
         <>Your free trial has ended. </>
       )}
       <Link href="/billing" className="font-semibold underline">
-        Add billing — £8/mo
+        Add billing — from £{FROM_PRICE}/mo
       </Link>
     </div>
   );

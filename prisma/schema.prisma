@@ -19,6 +19,9 @@ model Company {
   // Used to build the public compliance-card URL: /c/[shareSlug]
   shareSlug      String     @unique
   planStatus     String     @default("TRIAL")
+  // One of PLAN_TIERS in src/lib/constants.ts (SOLO/CREW/BUSINESS) — caps
+  // how many workers the company can add. See getWorkerLimit().
+  planTier       String     @default("CREW")
   trialEndsAt    DateTime
   stripeCustomerId       String? @unique
   stripeSubscriptionId   String? @unique
@@ -81,6 +84,41 @@ model Certificate {
   @@index([companyId])
   @@index([workerId])
   @@index([expiryDate])
+}
+
+// A paying main-contractor account — separate from Company/User, which model
+// the trade businesses being tracked. A Contractor doesn't have workers or
+// certificates of their own; they subscribe to watch OTHER companies'
+// public compliance cards from one dashboard. See src/lib/contractorAuth.ts.
+model Contractor {
+  id           String   @id @default(cuid())
+  businessName String
+  email        String   @unique
+  passwordHash String
+  planStatus   String   @default("TRIAL")
+  trialEndsAt  DateTime
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+  createdAt    DateTime @default(now())
+
+  watchedSubs WatchedSub[]
+}
+
+// One subcontractor a Contractor has added to their watchlist, identified by
+// the subcontractor's compliance-card shareSlug (Company.shareSlug). Not a
+// foreign key to Company: the sub may paste a link before or independent of
+// whichever company record it resolves to, and an unresolvable slug should
+// still show up as "not found" rather than fail to save.
+model WatchedSub {
+  id           String   @id @default(cuid())
+  contractorId String
+  contractor   Contractor @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  label        String
+  shareSlug    String
+  createdAt    DateTime @default(now())
+
+  @@unique([contractorId, shareSlug])
+  @@index([contractorId])
 }
 
 model ReminderLog {

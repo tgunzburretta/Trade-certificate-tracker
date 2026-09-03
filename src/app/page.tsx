@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { PLAN_PRICE_GBP, TRIAL_DAYS } from "@/lib/constants";
+import { PLAN_TIERS, CONTRACTOR_PLAN_PRICE_GBP, TRIAL_DAYS } from "@/lib/constants";
+
+const FROM_PRICE = Math.min(...PLAN_TIERS.map((t) => t.priceGBP));
 
 const CERT_EXAMPLES = [
   "Public liability insurance",
@@ -42,6 +44,9 @@ export default function Home() {
             <Link href="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900">
               Sign in
             </Link>
+            <Link href="/for-contractors" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+              For contractors
+            </Link>
             <Link
               href="/register"
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
@@ -69,7 +74,7 @@ export default function Home() {
             >
               Start your {TRIAL_DAYS}-day free trial
             </Link>
-            <span className="text-sm text-slate-500">£{PLAN_PRICE_GBP}/mo after · no card to start</span>
+            <span className="text-sm text-slate-500">From £{FROM_PRICE}/mo after · no card to start</span>
           </div>
         </section>
 
@@ -84,17 +89,62 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
-          <h2 className="text-2xl font-semibold text-slate-900">Simple pricing</h2>
-          <p className="mt-2 text-slate-600">
-            £{PLAN_PRICE_GBP} per month per company. Unlimited workers, unlimited certificates.
-          </p>
-          <Link
-            href="/register"
-            className="mt-6 inline-block rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
-          >
-            Get started
-          </Link>
+        <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold text-slate-900">Simple pricing</h2>
+            <p className="mt-2 text-slate-600">Priced by crew size. Unlimited certificates on every plan.</p>
+          </div>
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            {PLAN_TIERS.map((tier) => (
+              <div
+                key={tier.id}
+                className={`flex flex-col rounded-xl border p-6 ${
+                  tier.popular ? "border-slate-900 ring-1 ring-slate-900" : "border-slate-200"
+                }`}
+              >
+                {tier.popular && (
+                  <span className="mb-2 inline-flex w-fit items-center rounded-full bg-slate-900 px-2.5 py-0.5 text-xs font-medium text-white">
+                    Most popular
+                  </span>
+                )}
+                <h3 className="font-semibold text-slate-900">{tier.name}</h3>
+                <p className="mt-1 text-sm text-slate-500">{tier.blurb}</p>
+                <p className="mt-3 text-2xl font-semibold text-slate-900">
+                  £{tier.priceGBP}
+                  <span className="text-sm font-normal text-slate-500">/mo</span>
+                </p>
+                <ul className="mt-4 flex-1 space-y-1 text-left text-sm text-slate-600">
+                  {tier.features.map((f) => (
+                    <li key={f}>✓ {f}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <Link
+              href="/register"
+              className="inline-block rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white hover:bg-slate-700"
+            >
+              Get started
+            </Link>
+          </div>
+        </section>
+
+        <section className="border-t border-slate-100 bg-slate-50 py-16">
+          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6">
+            <h2 className="text-2xl font-semibold text-slate-900">Hiring subcontractors?</h2>
+            <p className="mt-2 text-slate-600">
+              Main contractors use CertTrack to keep a live dashboard of every subcontractor&rsquo;s
+              compliance status — no more chasing paperwork before a job starts.
+            </p>
+            <Link
+              href="/for-contractors"
+              className="mt-6 inline-block rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
+            >
+              See contractor plans — from £{CONTRACTOR_PLAN_PRICE_GBP}/mo
+            </Link>
+          </div>
         </section>
       </main>
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { getWorkerLimit } from "@/lib/constants";
 
 const workerSchema = z.object({
   name: z.string().trim().min(2, "Name is too short"),
@@ -22,6 +23,19 @@ export async function createWorkerAction(formData: FormData): Promise<void> {
 
   if (!parsed.success) {
     redirect(`/workers/new?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: user.companyId } });
+  const limit = getWorkerLimit(company.planTier);
+  if (limit !== null) {
+    const workerCount = await prisma.worker.count({ where: { companyId: user.companyId } });
+    if (workerCount >= limit) {
+      redirect(
+        `/workers/new?error=${encodeURIComponent(
+          `Your plan is capped at ${limit} worker${limit === 1 ? "" : "s"}. Upgrade to add more.`,
+        )}`,
+      );
+    }
   }
 
   const worker = await prisma.worker.create({

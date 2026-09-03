@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCertStatus } from "@/lib/certStatus";
+import { getOverallCompliance } from "@/lib/compliance";
 import { certTypeLabel } from "@/lib/constants";
 import { Badge, Card } from "@/components/ui";
 
@@ -29,18 +30,7 @@ export default async function ComplianceCardPage({
     ...company.certificates,
     ...company.workers.flatMap((w) => w.certificates),
   ];
-  const worstRank = allCerts.reduce((worst, c) => {
-    const rank = { valid: 0, upcoming: 1, warning: 2, critical: 3, expired: 4 };
-    const status = getCertStatus(c.expiryDate).status;
-    return Math.max(worst, rank[status]);
-  }, 0);
-
-  const overall =
-    worstRank >= 3
-      ? { label: "Action needed", color: "red" as const }
-      : worstRank === 2
-        ? { label: "Renewal due soon", color: "amber" as const }
-        : { label: "Compliance up to date", color: "emerald" as const };
+  const overall = getOverallCompliance(allCerts);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10">
@@ -113,7 +103,7 @@ function CertList({
         return (
           <li key={cert.id} className="flex items-center justify-between py-2 text-sm">
             <span className="text-slate-700">{cert.label || certTypeLabel(cert.type)}</span>
-            <Badge color={color}>{info.status === "expired" ? "Expired" : "Valid"}</Badge>
+            <Badge color={color}>{info.label}</Badge>
           </li>
         );
       })}

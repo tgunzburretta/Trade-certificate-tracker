@@ -15,7 +15,17 @@ emails whoever's in charge at 60/30/7 days before anything lapses.
 - **Compliance card** (`/c/[slug]`) — a public, no-login link you text or
   email to a customer or main contractor showing your certs are current.
   Document contents are never shown publicly, only status.
-- **Billing** — £8/month per company, 14-day free trial.
+- **Billing** — three tiers by crew size (see `PLAN_TIERS` in
+  `src/lib/constants.ts`): Solo (1 worker, £7/mo), Crew (up to 6 workers,
+  £15/mo), Business (unlimited workers, £29/mo). 14-day free trial on every
+  tier, no card needed.
+- **For contractors** (`/for-contractors`) — a separate paid product for main
+  contractors: a login of their own, a dashboard listing subcontractors by
+  the compliance-card link the sub gave them, and a live red/amber/green
+  status per sub. £19/month, 14-day free trial. This is a distinct account
+  type (`Contractor`/`WatchedSub` in the schema) from the trade-company
+  accounts above — a contractor doesn't have workers or certificates of
+  their own, just a watchlist of other companies' public compliance cards.
 
 ## Stack
 
@@ -50,7 +60,8 @@ deploying anywhere real.
 | `RESEND_API_KEY` | no | Enables real email delivery via [Resend](https://resend.com). Without it, reminder emails are logged to the console instead — handy for local dev/demos |
 | `REMINDER_FROM_EMAIL` | no | From-address for reminder emails |
 | `CRON_SECRET` | yes (for reminders) | Shared secret the daily reminder job must send |
-| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | no | Enables real Stripe Checkout + billing portal. Without them, the Billing page's "Subscribe" / "Cancel" buttons just flip the plan status directly in the database — which is exactly what you want for the free-for-a-testimonial first-10-customers deals |
+| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_SOLO`, `STRIPE_PRICE_ID_CREW`, `STRIPE_PRICE_ID_BUSINESS`, `STRIPE_WEBHOOK_SECRET` | no | Enables real Stripe Checkout + billing portal for trade-company plans. Without them, the Billing page's "Subscribe" / "Cancel" buttons just flip the plan status directly in the database — which is exactly what you want for the free-for-a-testimonial first-10-customers deals |
+| `STRIPE_PRICE_ID_CONTRACTOR` | no | Same idea, for the contractor plan at `/contractor/billing` |
 
 ## Renewal reminders (60 / 30 / 7 days)
 

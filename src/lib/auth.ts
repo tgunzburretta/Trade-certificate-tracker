@@ -83,6 +83,7 @@ export interface CurrentUser {
     name: string;
     shareSlug: string;
     planStatus: string;
+    planTier: string;
     trialEndsAt: Date;
   };
 }
@@ -109,6 +110,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       name: user.company.name,
       shareSlug: user.company.shareSlug,
       planStatus: user.company.planStatus,
+      planTier: user.company.planTier,
       trialEndsAt: user.company.trialEndsAt,
     },
   };
