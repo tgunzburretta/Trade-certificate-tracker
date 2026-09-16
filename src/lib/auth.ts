@@ -9,9 +9,9 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 function getSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
-  if (!secret || secret.length < 16) {
+  if (!secret || secret.length < 32) {
     throw new Error(
-      "AUTH_SECRET is missing or too short. Set a long random string in your .env file.",
+      "AUTH_SECRET is missing or too short (need at least 32 characters). Set a long random string in your .env file, e.g. `openssl rand -hex 32`.",
     );
   }
   return new TextEncoder().encode(secret);
@@ -77,12 +77,14 @@ export interface CurrentUser {
   name: string;
   email: string;
   role: string;
+  emailVerifiedAt: Date | null;
   companyId: string;
   company: {
     id: string;
     name: string;
     shareSlug: string;
     planStatus: string;
+    planTier: string;
     trialEndsAt: Date;
   };
 }
@@ -103,12 +105,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerifiedAt: user.emailVerifiedAt,
     companyId: user.companyId,
     company: {
       id: user.company.id,
       name: user.company.name,
       shareSlug: user.company.shareSlug,
       planStatus: user.company.planStatus,
+      planTier: user.company.planTier,
       trialEndsAt: user.company.trialEndsAt,
     },
   };

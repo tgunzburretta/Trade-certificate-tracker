@@ -4,10 +4,16 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import { getStripe, isStripeConfigured, stripePriceIdForTier } from "@/lib/stripe";
+import { PLAN_TIERS, type PlanTierId } from "@/lib/constants";
 
 function appUrl(): string {
   return process.env.APP_URL || "http://localhost:3000";
+}
+
+function parseTier(value: FormDataEntryValue | null): PlanTierId {
+  const tier = PLAN_TIERS.find((t) => t.id === value);
+  return tier ? tier.id : "CREW";
 }
 
 /**
@@ -17,28 +23,50 @@ function appUrl(): string {
  * "set it up free in exchange for a testimonial" first-10-customers deals —
  * no card ever needs to be collected for those.
  */
-export async function startCheckoutAction(): Promise<void> {
+export async function startCheckoutAction(formData: FormData): Promise<void> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  const tier = parseTier(formData.get("tier"));
 
   if (!isStripeConfigured()) {
     await prisma.company.update({
       where: { id: user.companyId },
-      data: { planStatus: "ACTIVE" },
+      data: { planStatus: "ACTIVE", planTier: tier },
     });
     revalidatePath("/billing");
     redirect("/billing?activated=1");
   }
 
   const stripe = getStripe();
+  const company = await prisma.company.findUniqueOrThrow({ where: { id: user.companyId } });
+
+  // Already on a paid subscription and switching tier — update the existing
+  // Stripe subscription's price in place. Starting a *second* Checkout
+  // session here would create a second, separate subscription and double-
+  // bill the company instead of changing their plan.
+  if (company.planStatus === "ACTIVE" && company.stripeSubscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(company.stripeSubscriptionId);
+    const itemId = subscription.items.data[0]?.id;
+    if (itemId) {
+      await stripe.subscriptions.update(company.stripeSubscriptionId, {
+        items: [{ id: itemId, price: stripePriceIdForTier(tier) }],
+        proration_behavior: "create_prorations",
+      });
+      await prisma.company.update({ where: { id: user.companyId }, data: { planTier: tier } });
+      revalidatePath("/billing");
+      redirect("/billing?success=1");
+    }
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer_email: user.email,
-    line_items: [{ price: process.env.STRIPE_PRICE_ID!, quantity: 1 }],
+    line_items: [{ price: stripePriceIdForTier(tier), quantity: 1 }],
     success_url: `${appUrl()}/billing?success=1`,
     cancel_url: `${appUrl()}/billing`,
     client_reference_id: user.companyId,
-    metadata: { companyId: user.companyId },
+    metadata: { companyId: user.companyId, tier },
   });
 
   redirect(session.url!);

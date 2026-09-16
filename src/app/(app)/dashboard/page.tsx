@@ -12,15 +12,24 @@ export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [certificates, workerCount, verifications] = await Promise.all([
-    prisma.certificate.findMany({
-      where: { companyId: user.companyId },
-      include: { worker: true },
-      orderBy: { expiryDate: "asc" },
-    }),
-    prisma.worker.count({ where: { companyId: user.companyId } }),
-    getLatestVerifications(user.companyId),
-  ]);
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const [certificates, workerCount, cardViewsTotal, cardViewsThisMonth, verifications] =
+    await Promise.all([
+      prisma.certificate.findMany({
+        where: { companyId: user.companyId },
+        include: { worker: true },
+        orderBy: { expiryDate: "asc" },
+      }),
+      prisma.worker.count({ where: { companyId: user.companyId } }),
+      prisma.cardView.count({ where: { companyId: user.companyId } }),
+      prisma.cardView.count({
+        where: { companyId: user.companyId, viewedAt: { gte: startOfMonth } },
+      }),
+      getLatestVerifications(user.companyId),
+    ]);
 
   const counts = { expired: 0, critical: 0, warning: 0, upcoming: 0, valid: 0 };
   for (const cert of certificates) {
@@ -66,6 +75,21 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {cardViewsTotal > 0 && (
+        <p className="-mt-4 text-sm text-slate-500">
+          Your compliance card has been viewed{" "}
+          <span className="font-medium text-slate-700">{cardViewsTotal}</span> time
+          {cardViewsTotal === 1 ? "" : "s"}
+          {cardViewsThisMonth > 0 && (
+            <>
+              {" "}
+              (<span className="font-medium text-slate-700">{cardViewsThisMonth}</span> this month)
+            </>
+          )}
+          .
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatTile label="Expired" value={counts.expired} status="expired" />
