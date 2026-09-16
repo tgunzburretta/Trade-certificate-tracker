@@ -22,12 +22,48 @@ model Company {
   trialEndsAt    DateTime
   stripeCustomerId       String? @unique
   stripeSubscriptionId   String? @unique
+
+  // Identifiers we can re-verify against external registers. Stored on the
+  // company; the result of each check lives in CompanyVerification.
+  companyNumber  String?
+  registeredName String?
+  registeredAddress String?
+
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  users        User[]
-  workers      Worker[]
-  certificates Certificate[]
+  users         User[]
+  workers       Worker[]
+  certificates  Certificate[]
+  verifications CompanyVerification[]
+}
+
+// Append-only log of every verification check we have ever run. Rows are
+// never updated or deleted — if a customer disputes what their compliance
+// card claimed, we need to show what the register said ON THE DAY, not what
+// it says now. Read the latest row per source to render current state.
+model CompanyVerification {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // See VERIFICATION_SOURCES in src/lib/constants.ts
+  source     String
+  // What we looked up: company number, VAT number, vehicle reg, membership no.
+  identifier String
+  // See VERIFICATION_STATUSES — note CHECK_FAILED (we could not reach the
+  // register) is deliberately distinct from NOT_FOUND (the register answered,
+  // and there is no such company).
+  status     String
+  // Human-readable summary shown in the UI, e.g. "Active since 15 Jan 2019".
+  detail     String?
+  // Proof-of-check reference where the source gives us one (HMRC does).
+  reference  String?
+  // Raw JSON snapshot of the source's response, for audit.
+  payload    String?
+  checkedAt  DateTime @default(now())
+
+  @@index([companyId, source, checkedAt])
 }
 
 model User {

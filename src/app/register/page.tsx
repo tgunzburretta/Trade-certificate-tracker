@@ -24,6 +24,17 @@ export default async function RegisterPage({
           <form action={registerAction} className="space-y-4">
             <ErrorBanner message={error} />
             <Field label="Company name" name="companyName" required placeholder="Acme Roofing Ltd" />
+            <div>
+              <Field
+                label="Companies House number (optional)"
+                name="companyNumber"
+                placeholder="01234567"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Add it and we&rsquo;ll confirm your company against the public register, so
+                customers can see you&rsquo;re a real trading business.
+              </p>
+            </div>
             <Field label="Your name" name="name" required placeholder="Jamie Smith" />
             <Field label="Email" name="email" type="email" required />
             <Field label="Password" name="password" type="password" required placeholder="At least 8 characters" />

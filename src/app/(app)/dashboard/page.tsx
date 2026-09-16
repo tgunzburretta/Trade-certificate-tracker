@@ -5,18 +5,21 @@ import { getCertStatus, STATUS_STYLES } from "@/lib/certStatus";
 import { certTypeLabel } from "@/lib/constants";
 import { Card } from "@/components/ui";
 import { StatusBadge } from "@/components/StatusBadge";
+import { VerificationRow } from "@/components/VerificationRow";
+import { getLatestVerifications } from "@/lib/verification";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [certificates, workerCount] = await Promise.all([
+  const [certificates, workerCount, verifications] = await Promise.all([
     prisma.certificate.findMany({
       where: { companyId: user.companyId },
       include: { worker: true },
       orderBy: { expiryDate: "asc" },
     }),
     prisma.worker.count({ where: { companyId: user.companyId } }),
+    getLatestVerifications(user.companyId),
   ]);
 
   const counts = { expired: 0, critical: 0, warning: 0, upcoming: 0, valid: 0 };
@@ -71,6 +74,17 @@ export default async function DashboardPage() {
         <StatTile label="≤ 60 days" value={counts.upcoming} status="upcoming" />
         <StatTile label="Valid" value={counts.valid} status="valid" />
       </div>
+
+      {verifications.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-semibold text-slate-900">Business verification</h2>
+          <Card className="divide-y divide-slate-100 px-5 py-2">
+            {verifications.map((v) => (
+              <VerificationRow key={v.source} verification={v} />
+            ))}
+          </Card>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Needs attention</h2>

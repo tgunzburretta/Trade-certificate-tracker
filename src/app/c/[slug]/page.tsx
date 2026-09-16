@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCertStatus } from "@/lib/certStatus";
 import { certTypeLabel } from "@/lib/constants";
 import { Badge, Card } from "@/components/ui";
+import { VerificationRow } from "@/components/VerificationRow";
+import { getLatestVerifications } from "@/lib/verification";
 
 export const revalidate = 0;
 
@@ -24,6 +26,16 @@ export default async function ComplianceCardPage({
     },
   });
   if (!company) notFound();
+
+  // Cached rows only — this page is public and unauthenticated, so it must
+  // never proxy through to an external register on render.
+  // Inconclusive results (we couldn't reach the register, no matching record)
+  // are withheld rather than shown: they'd imply something we can't stand
+  // behind either way. An ADVERSE result IS shown — hiding a dissolved
+  // company from the customer viewing their card would defeat the point.
+  const verifications = (await getLatestVerifications(company.id)).filter(
+    (v) => v.status === "VERIFIED" || v.status === "ADVERSE",
+  );
 
   const allCerts = [
     ...company.certificates,
@@ -54,6 +66,19 @@ export default async function ComplianceCardPage({
             <Badge color={overall.color}>{overall.label}</Badge>
           </div>
         </div>
+
+        {verifications.length > 0 && (
+          <Card className="px-5 py-3">
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Business checks
+            </h2>
+            <div className="divide-y divide-slate-100">
+              {verifications.map((v) => (
+                <VerificationRow key={v.source} verification={v} />
+              ))}
+            </div>
+          </Card>
+        )}
 
         {company.certificates.length > 0 && (
           <Card className="p-5">

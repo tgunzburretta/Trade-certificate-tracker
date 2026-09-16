@@ -10,7 +10,8 @@
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "reminders": "tsx scripts/send-reminders.ts"
+    "reminders": "tsx scripts/send-reminders.ts",
+    "test:verification": "tsx scripts/check-companies-house.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

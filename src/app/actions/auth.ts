@@ -6,9 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword, createSession, destroySession } from "@/lib/auth";
 import { makeShareSlug } from "@/lib/slug";
 import { TRIAL_DAYS } from "@/lib/constants";
+import { runAndRecordCheck } from "@/lib/verification";
 
 const registerSchema = z.object({
   companyName: z.string().trim().min(2, "Company name is too short"),
+  companyNumber: z.string().trim().optional(),
   name: z.string().trim().min(2, "Your name is too short"),
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -17,6 +19,7 @@ const registerSchema = z.object({
 export async function registerAction(formData: FormData): Promise<void> {
   const parsed = registerSchema.safeParse({
     companyName: formData.get("companyName"),
+    companyNumber: formData.get("companyNumber") || undefined,
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
@@ -26,7 +29,7 @@ export async function registerAction(formData: FormData): Promise<void> {
     redirect(`/register?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
   }
 
-  const { companyName, name, email, password } = parsed.data;
+  const { companyName, companyNumber, name, email, password } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -47,12 +50,23 @@ export async function registerAction(formData: FormData): Promise<void> {
       company: {
         create: {
           name: companyName,
+          companyNumber: companyNumber || null,
           shareSlug: makeShareSlug(companyName),
           trialEndsAt,
         },
       },
     },
   });
+
+  // Verify against Companies House. A failure here must never block signup —
+  // an unreachable register is our problem, and the daily sweep retries.
+  if (companyNumber) {
+    try {
+      await runAndRecordCheck(user.companyId, "COMPANIES_HOUSE", companyNumber);
+    } catch (err) {
+      console.error("Companies House check failed during signup:", err);
+    }
+  }
 
   await createSession({ userId: user.id, companyId: user.companyId });
   redirect("/dashboard");

@@ -33,3 +33,29 @@ export const REMINDER_WINDOW_DAYS: Record<ReminderWindow, number> = {
 };
 
 export const PLAN_PRICE_GBP = 8;
+
+export const VERIFICATION_SOURCES = ["COMPANIES_HOUSE"] as const;
+export type VerificationSource = (typeof VERIFICATION_SOURCES)[number];
+
+export const VERIFICATION_SOURCE_LABELS: Record<VerificationSource, string> = {
+  COMPANIES_HOUSE: "Companies House",
+};
+
+export const VERIFICATION_STATUSES = [
+  // The register answered and the company is in good standing.
+  "VERIFIED",
+  // The register answered, the company exists, but it is not in good standing
+  // (dissolved, liquidation, administration...) — a real negative signal.
+  "ADVERSE",
+  // The register answered and there is no such record.
+  "NOT_FOUND",
+  // We could NOT reach the register. This is our problem, not a mark against
+  // the company, and must never be rendered as "not verified".
+  "CHECK_FAILED",
+] as const;
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/** How long a check stays fresh before the daily sweep re-runs it. */
+export const VERIFICATION_RECHECK_DAYS: Record<VerificationSource, number> = {
+  COMPANIES_HOUSE: 30,
+};

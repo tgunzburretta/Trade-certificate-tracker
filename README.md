@@ -51,6 +51,8 @@ deploying anywhere real.
 | `REMINDER_FROM_EMAIL` | no | From-address for reminder emails |
 | `CRON_SECRET` | yes (for reminders) | Shared secret the daily reminder job must send |
 | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | no | Enables real Stripe Checkout + billing portal. Without them, the Billing page's "Subscribe" / "Cancel" buttons just flip the plan status directly in the database — which is exactly what you want for the free-for-a-testimonial first-10-customers deals |
+| `COMPANIES_HOUSE_API_KEY` | no | Free key from the [Companies House developer hub](https://developer.company-information.service.gov.uk/get-started). Enables business verification at signup — see below |
+| `COMPANIES_HOUSE_API_URL` | no | Override the API base URL, e.g. to use the Companies House sandbox |
 
 ## Renewal reminders (60 / 30 / 7 days)
 
@@ -70,6 +72,47 @@ Two ways to run it:
   header or a `?secret=` query param). `.github/workflows/reminders.yml`
   calls this daily via GitHub Actions — set the `APP_URL` and `CRON_SECRET`
   repo secrets after you deploy for it to work.
+
+## Business verification
+
+Certificates are only as credible as the business behind them, so CertTrack
+checks the company against public registers rather than taking their word for
+it. Companies House is wired up today; the adapter pattern in
+`src/lib/verification/` is designed so other sources slot in beside it.
+
+**How it works**
+
+- At signup the customer can give their Companies House number. We look it up,
+  confirm the company is real and active, and prefill their registered name and
+  address — so verification *saves* them typing rather than being a hoop.
+- Every check is appended to `CompanyVerification` as an immutable row with the
+  raw response stored. Rows are never updated or deleted: if a customer ever
+  disputes what their compliance card claimed, we need to show what the register
+  said **on the day**, not what it says now.
+- The daily sweep re-checks companies every 30 days, and retries failed checks
+  on the next run. A company entering liquidation between checks is reported as
+  `newlyAdverse`.
+
+**Design rules worth preserving**
+
+- **`CHECK_FAILED` is not `NOT_FOUND`.** A register we couldn't reach is our
+  problem and renders as "we'll retry" — never as a mark against the company.
+- **Never a bare green tick.** The UI always names the register, what it said,
+  and when we asked. A main contractor cares which claims were machine-checked.
+- **The public compliance card reads stored rows only** and never calls an
+  external API during render — it's unauthenticated, so doing otherwise would be
+  both a rate-limit risk and an abuse vector. Inconclusive results are withheld
+  from it; an adverse result is *shown*, because hiding a dissolved company from
+  the customer viewing the card would defeat the purpose.
+
+**Setup:** register for a free key at
+[developer.company-information.service.gov.uk](https://developer.company-information.service.gov.uk/get-started)
+and set `COMPANIES_HOUSE_API_KEY`. Without it, signup still works and the
+company simply isn't verified. `COMPANIES_HOUSE_API_URL` can point at the
+Companies House sandbox.
+
+Run `npm run test:verification` to exercise the adapter's mapping and failure
+handling against a local stub — no API key needed.
 
 ## Document storage
 
