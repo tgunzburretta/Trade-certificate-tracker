@@ -37,9 +37,17 @@ export async function createCertificateAction(formData: FormData): Promise<void>
   };
 
   const parsed = certSchema.safeParse(raw);
-  const backTo = raw.workerId ? `/certificates/new?workerId=${raw.workerId}` : "/certificates/new";
+  const backTo = raw.workerId
+    ? `/certificates/new?workerId=${encodeURIComponent(String(raw.workerId))}`
+    : "/certificates/new";
+  // backTo only carries a query string when a worker was preselected, so the
+  // separator has to be chosen rather than hardcoded — getting this wrong puts
+  // the message in the path and the form renders with no error at all.
+  const backWithError = (message: string) =>
+    `${backTo}${backTo.includes("?") ? "&" : "?"}error=${encodeURIComponent(message)}`;
+
   if (!parsed.success) {
-    redirect(`${backTo}&error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+    redirect(backWithError(parsed.error.issues[0].message));
   }
 
   const { type, label, workerId, issuedDate, expiryDate, notes } = parsed.data;
@@ -58,7 +66,7 @@ export async function createCertificateAction(formData: FormData): Promise<void>
       documentPath = saved.path;
       documentName = saved.name;
     } catch (err) {
-      redirect(`${backTo}&error=${encodeURIComponent((err as Error).message)}`);
+      redirect(backWithError((err as Error).message));
     }
   }
 
