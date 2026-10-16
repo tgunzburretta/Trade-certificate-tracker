@@ -16,17 +16,48 @@ interface SendEmailArgs {
  */
 export async function sendEmail({ to, subject, html, text }: SendEmailArgs): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.REMINDER_FROM_EMAIL || "alerts@example.com";
 
   if (!apiKey) {
     console.log(`[email:dev-mode] to=${to} subject="${subject}"\n${text}`);
     return;
   }
 
+  const from = process.env.REMINDER_FROM_EMAIL;
+  if (!from) {
+    throw new Error(
+      "RESEND_API_KEY is set but REMINDER_FROM_EMAIL is not — set it to an address on a domain verified in Resend.",
+    );
+  }
+
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({ from, to, subject, html, text });
   if (error) {
     throw new Error(`Resend failed to send to ${to}: ${error.message}`);
+  }
+}
+
+/**
+ * Sends without ever throwing, returning whether it got through.
+ *
+ * Use this wherever a delivery failure must not break the flow the user is
+ * in. Two cases matter:
+ *   - Signup. The account is already created by the time we email. Letting
+ *     a provider outage throw here leaves the user with an account, no
+ *     session, and "that email is already registered" on every retry.
+ *   - Password reset. The response has to look identical whether or not the
+ *     address is registered; if only the registered branch can throw, a
+ *     broken provider turns the form into an account-enumeration oracle.
+ *
+ * The reminder sweep deliberately uses the throwing `sendEmail` instead — it
+ * catches per certificate and reports failures in its result.
+ */
+export async function sendEmailQuietly(args: SendEmailArgs): Promise<boolean> {
+  try {
+    await sendEmail(args);
+    return true;
+  } catch (err) {
+    console.error(`[email] delivery to ${args.to} failed:`, (err as Error).message);
+    return false;
   }
 }
 

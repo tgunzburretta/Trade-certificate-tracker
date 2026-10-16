@@ -9,7 +9,7 @@ import { TRIAL_DAYS, REFERRAL_SOURCES } from "@/lib/constants";
 import { runAndRecordCheck } from "@/lib/verification";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { createToken, consumeToken } from "@/lib/tokens";
-import { sendEmail, verificationEmail, passwordResetEmail } from "@/lib/email";
+import { sendEmailQuietly, verificationEmail, passwordResetEmail } from "@/lib/email";
 
 const LOGIN_LIMIT = 10;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -27,7 +27,10 @@ async function sendVerificationEmail(userId: string, name: string, email: string
     name,
     verifyUrl: `${appUrl()}/api/verify-email?token=${token}`,
   });
-  await sendEmail({ to: email, subject, html, text });
+  // Never throws: the caller is mid-signup or mid-reset, and neither can be
+  // allowed to fail because the email provider is having a bad day. The
+  // dashboard offers a resend if it didn't arrive.
+  await sendEmailQuietly({ to: email, subject, html, text });
 }
 
 const referralSourceValues = REFERRAL_SOURCES.map((r) => r.value) as [string, ...string[]];
@@ -175,7 +178,7 @@ export async function requestPasswordResetAction(formData: FormData): Promise<vo
       name: user.name,
       resetUrl: `${appUrl()}/reset-password?token=${token}`,
     });
-    await sendEmail({ to: user.email, subject, html, text });
+    await sendEmailQuietly({ to: user.email, subject, html, text });
   }
 
   redirect("/forgot-password?sent=1");
