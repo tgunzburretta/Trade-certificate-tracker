@@ -12,9 +12,11 @@
     "db:deploy": "prisma migrate deploy",
     "reminders": "tsx scripts/send-reminders.ts",
     "test:verification": "tsx scripts/check-companies-house.ts",
-    "test:reminders": "tsx scripts/check-reminders.ts"
+    "test:reminders": "tsx scripts/check-reminders.ts",
+    "test:storage": "tsx scripts/check-storage.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1154.0",
     "@prisma/client": "^5.22.0",
     "@upstash/redis": "^1.38.3",
     "bcryptjs": "^3.0.3",

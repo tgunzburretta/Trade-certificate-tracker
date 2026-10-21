@@ -3,15 +3,15 @@ generator client {
 }
 
 datasource db {
-  // SQLite for local dev. Point DATABASE_URL at Postgres (e.g. Supabase/Vercel
-  // Postgres/Neon) in production — see README "Going to production".
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// SQLite has no native enum support in Prisma, so enum-like fields below are
-// plain strings. The allowed values are validated in app code — see
-// src/lib/constants.ts (PLAN_STATUSES, ROLES, CERT_TYPES, REMINDER_WINDOWS).
+// Enum-like fields below are plain strings rather than native Postgres enums:
+// adding a value to a Prisma enum needs a migration, and these lists (plan
+// tiers, certificate types, verification statuses) change with the product.
+// The allowed values live in src/lib/constants.ts and are validated in app
+// code — see PLAN_TIERS, CERT_TYPES, REMINDER_WINDOWS, VERIFICATION_STATUSES.
 
 model Company {
   id             String     @id @default(cuid())

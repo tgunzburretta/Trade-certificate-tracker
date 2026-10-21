@@ -30,31 +30,35 @@ emails whoever's in charge at 60/30/7 days before anything lapses.
 ## Stack
 
 Next.js 16 (App Router, Server Actions) · TypeScript · Tailwind CSS ·
-Prisma + SQLite (swap to Postgres for real deployments — see below) · Resend
-for email · Stripe for billing (optional — falls back to a demo/manual mode
-without it).
+Prisma + PostgreSQL · Cloudflare R2 for uploaded documents (falls back to
+local disk in development) · Resend for email · Stripe for billing (optional
+— falls back to a demo/manual mode without it).
 
 ## Getting started
 
+You need a PostgreSQL database. Either run one locally, or create a free
+branch on [Neon](https://neon.tech) and use its connection string.
+
 ```bash
-npm install          # also runs `prisma generate` via postinstall
-npx prisma migrate deploy   # creates prisma/dev.db and applies migrations
+cp .env.example .env         # then set DATABASE_URL
+npm install                  # also runs `prisma generate` via postinstall
+npx prisma migrate deploy    # creates the schema
 npm run dev
 ```
 
-Open http://localhost:3000, register a company, and go. `.env` already has
-working defaults for local dev (SQLite, a dev auth secret, reminders logged
-to the console instead of actually emailed).
+Open http://localhost:3000, register a company, and go. With nothing else
+configured the app still works end to end: reminder, verification and
+password-reset emails are logged to the console rather than sent, documents
+go to local disk, and billing runs in demo mode.
 
-Copy `.env.example` to `.env` on a fresh checkout if `.env` isn't present,
-and change `AUTH_SECRET` and `CRON_SECRET` to real random strings before
-deploying anywhere real.
+Change `AUTH_SECRET` and `CRON_SECRET` to real random strings
+(`openssl rand -hex 32`) before deploying anywhere real.
 
 ### Environment variables
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | `file:./dev.db` for SQLite locally, or a Postgres URL in production |
+| `DATABASE_URL` | yes | PostgreSQL connection string |
 | `AUTH_SECRET` | yes | Long random string, signs session cookies |
 | `APP_URL` | yes | Public base URL — used for reminder email links and Stripe redirects. **Must start with `https://` in production**, or session cookies won't be marked `Secure` |
 | `RESEND_API_KEY` | no | Enables real email delivery via [Resend](https://resend.com) for reminders, email verification and password reset links. Without it, these are logged to the console instead — handy for local dev/demos, but verification/reset links only work if you can read that log |
@@ -63,6 +67,7 @@ deploying anywhere real.
 | `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID_SOLO`, `STRIPE_PRICE_ID_CREW`, `STRIPE_PRICE_ID_BUSINESS`, `STRIPE_WEBHOOK_SECRET` | no | Enables real Stripe Checkout + billing portal for trade-company plans. Without them, the Billing page's "Subscribe" / "Cancel" buttons just flip the plan status directly in the database — which is exactly what you want for the free-for-a-testimonial first-10-customers deals |
 | `COMPANIES_HOUSE_API_KEY` | no | Free key from the [Companies House developer hub](https://developer.company-information.service.gov.uk/get-started). Enables business verification at signup — see below |
 | `COMPANIES_HOUSE_API_URL` | no | Override the API base URL, e.g. to use the Companies House sandbox |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` | in production | Cloudflare R2 for uploaded documents. Without them uploads go to local disk, which a cloud host wipes on every deploy — see "Document storage" |
 | `STRIPE_PRICE_ID_CONTRACTOR` | no | Same idea, for the contractor plan at `/contractor/billing` |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | no | Backs login rate limiting with [Upstash Redis](https://upstash.com) so it's shared across instances/replicas. Without them, rate limiting falls back to a per-instance in-memory counter (`src/lib/rateLimit.ts`) — fine for a single Node process, not for multiple replicas or serverless |
 
@@ -144,35 +149,51 @@ handling against a local stub — no API key needed.
 
 ## Document storage
 
-Uploaded certificate documents are written to `storage/uploads/` (outside
-`/public`, gitignored) and served only through the authenticated
-`/api/documents/[certId]` route, which checks the requester belongs to the
-certificate's company before returning the file. This is deliberate: an
-`/public`-served upload would have no access control at all, and Next.js
-doesn't reliably serve files added to `/public` after the app was built.
+Uploaded certificate documents go to **Cloudflare R2** when it's configured,
+and to `storage/uploads/` on local disk otherwise (development only).
 
-Local disk works for a single-instance deployment or a demo, but won't
-survive a redeploy on serverless platforms with ephemeral disks (Vercel,
-etc.). For a real production deployment, swap `src/lib/storage.ts` for S3,
-Vercel Blob, or similar — the two functions (`saveUploadedDocument`,
-`readUploadedDocument`) are the only things that need to change.
+Either way they are served solely through the authenticated
+`/api/documents/[certId]` route, which checks the requester belongs to the
+certificate's company before returning the file. Nothing is ever placed under
+`/public`: that would have no access control at all, and Next.js doesn't
+reliably serve files added there after the app was built.
+
+**Local disk is not viable in production.** Cloud hosts give you an ephemeral
+filesystem, so every uploaded certificate would vanish on the next deploy.
+Set these four and R2 takes over automatically:
+
+```
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=vetted-documents
+```
+
+The bucket must stay **private** — the app reads objects with its credentials
+and streams them through the authenticated route. A public bucket would make
+every customer's paperwork world-readable to anyone who guessed a key.
+
+`npm run test:storage` round-trips a document through the R2 path against a
+local S3-compatible stub (no Cloudflare account needed); point it at a stub
+with `R2_ENDPOINT`.
 
 ## Going to production
 
-1. Point `DATABASE_URL` at a real Postgres database (Supabase, Neon, Vercel
-   Postgres all work) and run `npx prisma migrate deploy` against it.
+1. Point `DATABASE_URL` at a hosted Postgres (Neon's free tier is enough to
+   start) and run `npx prisma migrate deploy` against it.
 2. Set `APP_URL` to your real `https://` domain — this also flips session
    cookies to `Secure`.
-3. Set a real `AUTH_SECRET` and `CRON_SECRET`.
-4. Add `RESEND_API_KEY` + a verified sending domain for real reminder
-   emails.
-5. Add `STRIPE_SECRET_KEY`, one `STRIPE_PRICE_ID_*` per plan (`SOLO`, `CREW`,
-   `BUSINESS`, `CONTRACTOR`), and `STRIPE_WEBHOOK_SECRET` for real billing,
-   and point a Stripe webhook at `/api/stripe/webhook` (events:
+3. Set a real `AUTH_SECRET` and `CRON_SECRET` (`openssl rand -hex 32`).
+4. Add `RESEND_API_KEY` and `REMINDER_FROM_EMAIL` on a domain verified in
+   Resend. Without these, no reminder, verification or reset email is sent —
+   they only get logged.
+5. Configure R2 (see above) so uploaded documents survive a deploy.
+6. Optionally add `STRIPE_SECRET_KEY`, one `STRIPE_PRICE_ID_*` per plan
+   (`SOLO`, `CREW`, `BUSINESS`, `CONTRACTOR`), and `STRIPE_WEBHOOK_SECRET`,
+   then point a Stripe webhook at `/api/stripe/webhook` (events:
    `checkout.session.completed`, `customer.subscription.updated`,
-   `customer.subscription.deleted`).
-6. Swap document storage for S3/Vercel Blob (see above) if deploying
-   serverless.
+   `customer.subscription.deleted`). Without them billing runs in demo mode,
+   which is what you want for free-for-a-testimonial early customers.
 7. Add the `APP_URL` and `CRON_SECRET` GitHub repo secrets so the daily
    reminders workflow can reach the deployed app.
 
