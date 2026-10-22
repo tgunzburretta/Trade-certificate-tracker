@@ -201,6 +201,33 @@ with `R2_ENDPOINT`.
 7. Add the `APP_URL` and `CRON_SECRET` GitHub repo secrets so the daily
    reminders workflow can reach the deployed app.
 
+## If the app can't talk to the database
+
+Two connection-pooler problems look similar and have different fixes.
+
+**`prepared statement "s0" already exists`, or a P1002 lock timeout, during
+a deploy.** Migrations are going through the pooler. `DIRECT_DATABASE_URL`
+is either unset or still points at the `-pooler` host. Migrations need the
+direct connection; see the datasource block in `prisma/schema.prisma`.
+
+**`prepared statement ... already exists` at runtime, intermittently, after
+a successful deploy.** This is the app's own pooled connection. Prisma uses
+named prepared statements, which PgBouncer in transaction mode does not
+support. Add `&pgbouncer=true` to `DATABASE_URL` and redeploy — no code
+change needed.
+
+That flag is deliberately not baked in. It is the long-standing fix for
+Prisma behind PgBouncer, but Prisma's current guidance is to leave it off
+with PgBouncer 1.21 and later, where it can itself cause errors when the
+pooler allows prepared statements. Which applies depends on the version
+your provider runs, so deploy without it and add it only if you see that
+error.
+
+**`server did not use channel binding`.** The connection string carries
+`channel_binding=require` but the server doesn't support it. Neon does, and
+adds that parameter itself — so keep it there. Remove it only if you point
+the app at a different Postgres.
+
 ## Go-to-market notes
 
 - **Price:** trade companies pick Solo (£7/mo, 1 worker), Crew (£15/mo, up
