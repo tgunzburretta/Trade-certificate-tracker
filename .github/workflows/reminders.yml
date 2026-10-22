@@ -2,8 +2,10 @@ name: Send certificate renewal reminders
 
 on:
   schedule:
-    # 07:00 UTC daily. Checks every tracked certificate and emails whoever
-    # crosses the 60/30/7-day threshold (each window fires once per cert).
+    # 07:00 UTC daily — before the working day in the UK. Every certificate is
+    # checked and whoever crosses a 60/30/7-day threshold gets an email. Each
+    # window fires once per certificate, so running more than once a day is
+    # harmless; missing a day is not, which is why this retries below.
     - cron: "0 7 * * *"
   workflow_dispatch: {}
 
@@ -11,16 +13,98 @@ jobs:
   reminders:
     runs-on: ubuntu-latest
     steps:
-      - name: Call reminders endpoint
-        run: |
-          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X POST "${APP_URL}/api/cron/reminders" \
-            -H "x-cron-secret: ${CRON_SECRET}")
-          cat /tmp/response.json
-          if [ "$status" -ge 300 ]; then
-            echo "Reminder endpoint returned HTTP $status"
-            exit 1
-          fi
+      - name: Check the secrets are set
         env:
           APP_URL: ${{ secrets.APP_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          missing=""
+          [ -z "$APP_URL" ] && missing="$missing APP_URL"
+          [ -z "$CRON_SECRET" ] && missing="$missing CRON_SECRET"
+          if [ -n "$missing" ]; then
+            echo "Missing repository secret(s):$missing"
+            echo "Set them under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Wake the service
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          # On a free instance the app sleeps after 15 minutes idle and the
+          # first request can take the best part of a minute to answer. Absorb
+          # that here so the real call below starts against a warm service.
+          curl -s -o /dev/null --max-time 120 "$APP_URL/" || true
+
+      - name: Trigger the sweep
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -u
+          attempt=1
+          max=3
+          delay=20
+
+          while [ "$attempt" -le "$max" ]; do
+            echo "Attempt $attempt of $max"
+            # Clear first: on a connection failure curl writes nothing, and a
+            # leftover body from the previous attempt would be printed below
+            # as though it came from this one.
+            rm -f /tmp/response.json
+            # curl already writes 000 to stdout when it cannot connect, so
+            # capture that rather than appending another value on failure.
+            status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+              --max-time 180 \
+              -X POST "$APP_URL/api/cron/reminders" \
+              -H "x-cron-secret: $CRON_SECRET") || true
+            status="${status:-000}"
+
+            if [ "$status" = "200" ]; then
+              echo "HTTP 200"
+              break
+            fi
+
+            # 401 means the secret is wrong. Retrying will not fix that, and
+            # each retry is another failed auth attempt in the logs.
+            if [ "$status" = "401" ]; then
+              echo "HTTP 401 — CRON_SECRET does not match the deployed app."
+              exit 1
+            fi
+
+            echo "HTTP $status"
+            cat /tmp/response.json 2>/dev/null || true
+            if [ "$attempt" -eq "$max" ]; then
+              echo "Giving up after $max attempts."
+              exit 1
+            fi
+            sleep "$delay"
+            delay=$((delay * 2))
+            attempt=$((attempt + 1))
+          done
+
+          echo "--- response ---"
+          cat /tmp/response.json
+          echo
+
+          # A 200 only means the sweep ran. Individual sends can still have
+          # failed (a provider outage, a rejected address), and those are
+          # reported in the body rather than the status code — so a job that
+          # only checked the status would report success while nobody got
+          # their renewal email.
+          reminder_errors=$(jq -r '.reminders.errors | length' /tmp/response.json)
+          verification_errors=$(jq -r '.verifications.errors | length' /tmp/response.json)
+          sent=$(jq -r '.reminders.sent' /tmp/response.json)
+          checked=$(jq -r '.reminders.checked' /tmp/response.json)
+          echo "Checked $checked certificate(s), sent $sent reminder(s)."
+
+          adverse=$(jq -r '.verifications.newlyAdverse[]?' /tmp/response.json)
+          if [ -n "$adverse" ]; then
+            echo "Companies newly flagged at Companies House:"
+            echo "$adverse"
+          fi
+
+          if [ "$reminder_errors" != "0" ] || [ "$verification_errors" != "0" ]; then
+            echo "The sweep reported errors — see the response above."
+            exit 1
+          fi
