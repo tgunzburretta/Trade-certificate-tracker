@@ -58,7 +58,8 @@ Change `AUTH_SECRET` and `CRON_SECRET` to real random strings
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `DATABASE_URL` | yes | PostgreSQL connection string the app runs on. On Neon, the **pooled** one (host contains `-pooler`) |
+| `DIRECT_DATABASE_URL` | yes | Same database, **not** pooled — migrations run over this. PgBouncer breaks Prisma's prepared statements and `migrate deploy`'s advisory lock. With no pooler, set it to the same value as `DATABASE_URL` |
 | `AUTH_SECRET` | yes | Long random string, signs session cookies |
 | `APP_URL` | yes | Public base URL — used for reminder email links and Stripe redirects. **Must start with `https://` in production**, or session cookies won't be marked `Secure` |
 | `RESEND_API_KEY` | no | Enables real email delivery via [Resend](https://resend.com) for reminders, email verification and password reset links. Without it, these are logged to the console instead — handy for local dev/demos, but verification/reset links only work if you can read that log |
@@ -180,7 +181,10 @@ with `R2_ENDPOINT`.
 ## Going to production
 
 1. Point `DATABASE_URL` at a hosted Postgres (Neon's free tier is enough to
-   start) and run `npx prisma migrate deploy` against it.
+   start) and `DIRECT_DATABASE_URL` at the same database without its pooler,
+   then run `npx prisma migrate deploy` against it. On Neon the two strings
+   differ only by `-pooler` in the host; migrations over the pooled one fail
+   with a duplicate prepared statement or a lock timeout.
 2. Set `APP_URL` to your real `https://` domain — this also flips session
    cookies to `Secure`.
 3. Set a real `AUTH_SECRET` and `CRON_SECRET` (`openssl rand -hex 32`).

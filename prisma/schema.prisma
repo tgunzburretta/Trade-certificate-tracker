@@ -4,7 +4,18 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // The app's runtime connection. On Neon use the POOLED string (the host
+  // contains "-pooler") so many short-lived requests share a small number of
+  // real backends.
   url      = env("DATABASE_URL")
+  // Migrations must not go through the pooler. PgBouncer can hand successive
+  // statements to different physical backends, which breaks both Prisma's
+  // named prepared statements and the session-scoped advisory lock migrate
+  // takes — you get 'prepared statement "s0" already exists' or a P1002
+  // timeout on deploy. On Neon this is the same string without "-pooler";
+  // with a plain Postgres that has no pooler, set it to the same value as
+  // DATABASE_URL.
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // Enum-like fields below are plain strings rather than native Postgres enums:
