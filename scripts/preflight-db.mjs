@@ -32,8 +32,53 @@ function diagnose(raw) {
   return null;
 }
 
+// A hostname label per RFC 1123: alphanumeric at both ends, hyphens only in
+// between. The case this exists for is deleting "pooler" from a Neon host but
+// leaving its hyphen, which gives "ep-x-zavvuhzx-.c-2.eu-west-2..." — a host
+// that parses fine and resolves to nothing, so the first sign of trouble is
+// P1001 at migrate time with no hint as to which URL or which character.
+const LABEL = /^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$/;
+
+// What is structurally wrong with a value that does start with a scheme.
+// Returns null when the URL is usable.
+//
+// Only the offending hostname label is ever quoted back — never the username
+// or password, which is why this reads `url.hostname` rather than slicing the
+// raw string. A whole host could be shown safely (Prisma's own errors print
+// it), but there is no need, and one label is enough to spot the fault.
+function inspect(raw) {
+  // Checked before parsing because `new URL` does not object: it quietly
+  // percent-encodes a space rather than throwing. A space or line break
+  // inside the value means the paste picked up a wrapped line.
+  if (/\s/.test(raw)) return "it contains a space or a line break";
+
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    return "it could not be parsed as a URL — check for an unescaped character in the password";
+  }
+
+  if (url.hostname === "") return "it has no hostname";
+
+  const bad = url.hostname.split(".").find((label) => !LABEL.test(label));
+  if (bad !== undefined) {
+    return bad === ""
+      ? "its hostname has an empty part — two dots in a row, or a leading or trailing dot"
+      : `the hostname part ${JSON.stringify(bad)} is not valid — a part cannot start or end with a hyphen ` +
+          `(deleting "pooler" but leaving its hyphen does exactly this)`;
+  }
+
+  // Neon always names a database; a URL without one connects to a default
+  // that will not have the schema in it.
+  if (url.pathname === "" || url.pathname === "/") return "it has no database name after the hostname";
+
+  return null;
+}
+
 const problems = [];
 const warnings = [];
+const parsed = new Map();
 
 for (const name of VARS) {
   const raw = process.env[name];
@@ -44,6 +89,14 @@ for (const name of VARS) {
   if (raw === undefined) continue;
 
   if (SCHEMES.some((scheme) => raw.startsWith(scheme))) {
+    const fault = inspect(raw);
+    if (fault) {
+      problems.push(`${name} is not a usable connection string:\n  ${fault}`);
+      continue;
+    }
+
+    parsed.set(name, raw);
+
     // The split exists so migrations avoid the pooler — see the comment on
     // `directUrl` in prisma/schema.prisma. A pooled URL here still connects,
     // so this cannot be fatal, but it fails later and confusingly.
@@ -73,6 +126,23 @@ for (const name of VARS) {
       .filter(Boolean)
       .join("\n"),
   );
+}
+
+// The two should be the same string but for the pooler in the hostname. When
+// they differ by more than that, one of them was copied from somewhere else —
+// a different Neon project, or the wrong box — and the app and its migrations
+// end up pointed at two different databases. A warning rather than fatal:
+// against a plain Postgres with no pooler the two are legitimately identical,
+// and an unusual-but-deliberate setup should not be blocked from deploying.
+if (parsed.size === VARS.length) {
+  const [pooled, direct] = VARS.map((name) => parsed.get(name).replace("-pooler", ""));
+  if (pooled !== direct) {
+    warnings.push(
+      `DATABASE_URL and DIRECT_DATABASE_URL differ by more than "-pooler". They should be ` +
+        `the same connection string, with the pooled host in DATABASE_URL only — otherwise ` +
+        `the app and its migrations are using different databases.`,
+    );
+  }
 }
 
 for (const warning of warnings) {
