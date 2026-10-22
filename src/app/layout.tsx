@@ -13,6 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Link previews build absolute URLs from this. Without it Next falls back to
+  // localhost, so a shared compliance card previews with broken image links.
+  metadataBase: new URL(process.env.APP_URL || "http://localhost:3000"),
   title: "Vetted — certificate renewal tracker for trades",
   description:
     "Track public liability, CSCS cards, van MOTs, ladder inspections and DBS checks in one place. Get alerted at 60/30/7 days before they lapse.",

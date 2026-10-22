@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCertStatus } from "@/lib/certStatus";
@@ -8,6 +9,59 @@ import { VerificationRow } from "@/components/VerificationRow";
 import { getLatestVerifications } from "@/lib/verification";
 
 export const revalidate = 0;
+
+/**
+ * The card's whole job is to be forwarded — texted to a customer, pasted to a
+ * main contractor. Without this, every one of those previews reads "Vetted —
+ * certificate renewal tracker for trades", which tells the recipient nothing
+ * about the company that sent it.
+ *
+ * The summary reflects real status rather than always claiming everything is
+ * fine: a company with a lapsed certificate must not get a preview implying
+ * otherwise, because the recipient may never click through.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const company = await prisma.company.findUnique({
+    where: { shareSlug: slug },
+    include: {
+      certificates: { where: { workerId: null } },
+      workers: { include: { certificates: true } },
+    },
+  });
+
+  if (!company) return { title: "Compliance card not found" };
+
+  const allCerts = [...company.certificates, ...company.workers.flatMap((w) => w.certificates)];
+  const overall = getOverallCompliance(allCerts);
+  const verified = await getLatestVerifications(company.id);
+  const confirmedAtRegister = verified.some(
+    (v) => v.source === "COMPANIES_HOUSE" && v.status === "VERIFIED",
+  );
+
+  const parts = [overall.label];
+  if (allCerts.length > 0) {
+    parts.push(`${allCerts.length} certificate${allCerts.length === 1 ? "" : "s"} tracked`);
+  }
+  if (confirmedAtRegister) parts.push("company confirmed at Companies House");
+
+  return {
+    title: `${company.name} — compliance card`,
+    description: parts.join(" · "),
+    openGraph: {
+      title: `${company.name} — compliance card`,
+      description: parts.join(" · "),
+      type: "profile",
+    },
+    // These are individual businesses' pages, shared by link rather than
+    // published. Remove this to let them be found in search.
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function ComplianceCardPage({
   params,
